@@ -47,6 +47,9 @@ def get_rep_bam_file(bam_dir, lib_short, lib_prefix, lib_reps):
     bam_files = [os.path.join(bam_dir, lib_short, f"{'_'.join([lib_prefix, rep])}.bam") for rep in lib_reps.split()]
     return bam_files
 
+def get_rep_cov_filename(store_dir, lib_short, filebase):
+    return os.path.join(store_dir, "peak_cov", lib_short, f"{filebase}.csv")
+
 #####################
 # peak bed coverage #
 #####################
@@ -64,6 +67,7 @@ def get_replicate_norm_cov(peak_file, bam_file):
     bam_counts = get_bam_file_reads(bam_file)
     cov_bed = peak_bed.coverage(bam_bed)
     cov_df = cov_bed.to_dataframe(disable_auto_names=True, header=None)
+    cov_df = cov_df.set_index([0,1,2])
     cov_reads = cov_df.iloc[:, -4]
     cov_reads_rpm = (cov_reads*1e6)/bam_counts
     return cov_reads_rpm
@@ -72,6 +76,7 @@ def get_replicate_wise_cov_df(peak_file, bam_files):
     pool_iter = [(peak_file, bf) for bf in bam_files]
     rep_cov_sers = multi_args_pool_job(get_replicate_norm_cov, pool_iter)
     rep_cov_dfs = pd.concat(rep_cov_sers, axis=1)
+    rep_cov_dfs.columns = [f"Replicate {i}" for i in range(1, rep_cov_dfs.shape[1] + 1)]
     return rep_cov_dfs
 
 ################

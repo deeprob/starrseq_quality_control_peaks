@@ -1,4 +1,5 @@
 # coding: utf-8
+# script obtained from: https://github.com/tctianchi/pyvenn/blob/master/venn.py
 from itertools import chain
 from collections import Iterable
 import matplotlib.pyplot as plt

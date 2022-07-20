@@ -76,8 +76,18 @@ def get_replicate_wise_cov_df(peak_file, bam_files):
     pool_iter = [(peak_file, bf) for bf in bam_files]
     rep_cov_sers = multi_args_pool_job(get_replicate_norm_cov, pool_iter)
     rep_cov_dfs = pd.concat(rep_cov_sers, axis=1)
-    rep_cov_dfs.columns = [f"Replicate {i}" for i in range(1, rep_cov_dfs.shape[1] + 1)]
+    rep_cov_dfs.columns = [f"R{i}" for i in range(1, rep_cov_dfs.shape[1] + 1)]
     return rep_cov_dfs
+
+##################
+# meta peak file #
+##################
+
+def store_meta_peak_file(peak_files, store_path):
+    peak_beds = [pybedtools.BedTool(pf) for pf in peak_files]
+    meta_peak_bed = pybedtools.BedTool("", from_string=True).cat(*peak_beds, postmerge=False).sort()
+    meta_peak_bed.moveto(store_path)
+    return
 
 ################
 # multiprocess #

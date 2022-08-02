@@ -50,6 +50,9 @@ def get_rep_bam_file(bam_dir, lib_short, lib_prefix, lib_reps):
 def get_rep_cov_filename(store_dir, lib_short, filebase):
     return os.path.join(store_dir, "peak_cov", lib_short, f"{filebase}.csv")
 
+def get_neg_control_cov_filename(store_dir, lib_short, filebase):
+    return os.path.join(store_dir, "neg_control_cov", lib_short, f"{filebase}.csv")
+
 #####################
 # peak bed coverage #
 #####################
@@ -100,3 +103,28 @@ def multi_args_pool_job(func, pool_iter):
     pool.join()
     return res
 
+#####################
+# negative controls #
+#####################
+
+def parse_gtf_to_get_exons(gtf_file):
+    gtf_df = pd.read_csv(gtf_file, sep="\t", low_memory=False, usecols=["chrom", "exonStarts", "exonEnds"])
+    assert gtf_df.exonStarts.map(lambda x: len(x.split(","))).equals(gtf_df.exonEnds.map(lambda x: len(x.split(","))))
+    gtf_df.exonStarts = gtf_df.exonStarts.str.rstrip(",").str.split(",")
+    gtf_df.exonEnds = gtf_df.exonEnds.str.rstrip(",").str.split(",")
+    gtf_eStarts_df = gtf_df.loc[: , ["chrom", "exonStarts"]].explode("exonStarts")
+    gtf_eEnds_df = gtf_df.loc[: , ["chrom", "exonEnds"]].explode("exonEnds")
+    gtf_parsed_df = pd.concat((gtf_eStarts_df, gtf_eEnds_df), axis=1).drop_duplicates(keep="first")
+    gtf_parsed_df = gtf_parsed_df.loc[:,~gtf_parsed_df.columns.duplicated()].copy()
+    return gtf_parsed_df
+
+def read_roi_file(roi_file):
+    roi_df = pd.read_csv(roi_file, sep="\t", header=None, usecols=[0,1,2])
+    return roi_df
+
+def create_negative_controls(exon_df, roi_df, store_file):
+    exon_bed = pybedtools.BedTool.from_dataframe(exon_df)
+    roi_bed = pybedtools.BedTool.from_dataframe(roi_df)
+    negative_controls = exon_bed.intersect(roi_bed, f=1.0, u=True)
+    negative_controls.moveto(store_file)
+    return

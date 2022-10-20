@@ -5,8 +5,12 @@ import multiprocessing as mp
 import pandas as pd
 import pysam
 import pybedtools
+import subprocess
 
 pybedtools.helpers.set_tempdir("/data5/deepro/tmp")
+
+#### GLOBALS ####
+CURRENT_DIR_PATH = os.path.dirname(os.path.abspath(__file__))
 
 ###############################
 # read meta file; create args #
@@ -127,4 +131,28 @@ def create_negative_controls(exon_df, roi_df, store_file):
     roi_bed = pybedtools.BedTool.from_dataframe(roi_df)
     negative_controls = exon_bed.intersect(roi_bed, f=1.0, u=True)
     negative_controls.moveto(store_file)
+    return
+
+######################
+# reproducible peaks #
+######################
+
+# subsampling bam files
+def subsample_bam_file(bam_file, subsampled_bam, frac_bam, rseed):
+    fh = open(subsampled_bam, 'w')
+    fh.close()
+    pysam.view("-s", f"{rseed}.{frac_bam}", "-bo", subsampled_bam, bam_file, catch_stdout=False)
+    return
+
+# starrpeaker peak calling functions
+def call_starrpeaker_peaks_helper(
+    peaks_prefix, 
+    input_filtered_bam, output_filtered_bam, 
+    starrpeaker_data_dir
+    ):
+    cmd = ["bash", f"{CURRENT_DIR_PATH}/shell_scripts/call_peaks_starrpeaker.sh", 
+            f"{peaks_prefix}", 
+            f"{input_filtered_bam}", f"{output_filtered_bam}", 
+            f"{starrpeaker_data_dir}"]
+    subprocess.run(cmd)
     return
